@@ -1,0 +1,11 @@
+{
+  "name": "Multivideo",
+  "description": "Allows you to watch multiple videos",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions": ["scripting", "activeTab"],
+  "action": {},
+  "background": {
+    "service_worker": "background.js"
+  }
+}

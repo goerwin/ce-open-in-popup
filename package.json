@@ -1,0 +1,7 @@
+{
+  "name": "ce-open-in-popup",
+  "description": "Chrome extension that opens the current tab in a popup",
+  "devDependencies": {
+    "@types/chrome": "^0.0.164"
+  }
+}
