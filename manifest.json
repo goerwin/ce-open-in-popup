@@ -1,6 +1,6 @@
 {
-  "name": "Multivideo",
-  "description": "Allows you to watch multiple videos",
+  "name": "Open in popup",
+  "description": "Opens current tab in a popup with the ability to go back by pressing the red dot button in the top left corner",
   "version": "1.0",
   "manifest_version": 3,
   "permissions": ["scripting", "activeTab"],
