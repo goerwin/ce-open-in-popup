@@ -17,14 +17,25 @@ async function handleTogglePopup() {
 
   if (tabHash) return handleRestorePopup(curTabId);
 
-  await handleOpenInPopup(curTabId, curTab.index, curTab.windowId);
+  const curWin = await chrome.windows.get(curTab.windowId);
+
+  if (['app', 'popup'].includes(curWin.type)) {
+    tabHashes[curTabId] = {
+      width: curWin.width,
+      height: curWin.height,
+      top: curWin.top,
+      left: curWin.left,
+    };
+
+    return handleRestorePopup(curTabId);
+  }
+
+  await handleOpenInPopup(curTabId, curTab.index, curWin);
 }
 
 async function handleRestorePopup(tabId) {
   const tabHash = tabHashes[tabId];
   let windowId = tabHash?.windowId;
-
-  if (!tabHash) return;
 
   try {
     await chrome.scripting.executeScript({
@@ -61,9 +72,7 @@ async function handleRestorePopup(tabId) {
   await chrome.tabs.update(tabId, { active: true });
 }
 
-async function handleOpenInPopup(tabId, tabIdx, tabWindowId) {
-  const curWin = await chrome.windows.get(tabWindowId);
-
+async function handleOpenInPopup(tabId, tabIdx, curWin) {
   await chrome.windows.create({
     tabId,
     top: curWin.top,
@@ -75,7 +84,7 @@ async function handleOpenInPopup(tabId, tabIdx, tabWindowId) {
   });
 
   tabHashes[tabId] = {
-    windowId: tabWindowId,
+    windowId: curWin.id,
     index: tabIdx,
     width: curWin.width,
     height: curWin.height,
