@@ -1,52 +1,33 @@
 const tabHashes = {};
 
-chrome.action.onClicked.addListener(async () => {
+chrome.action.onClicked.addListener(handleTogglePopup);
+
+chrome.commands.onCommand.addListener(async function (command) {
+  if (command === 'togglePopup') await handleTogglePopup();
+});
+
+async function handleTogglePopup() {
   const curTab = await getCurrentTab();
   const curTabId = curTab.id;
+  const tabHash = tabHashes[curTabId];
 
   if (new RegExp('chrome://').test(curTab.url)) return;
 
-  const curWin = await chrome.windows.get(curTab.windowId);
+  if (tabHash) return handleRestorePopup(curTabId);
 
-  await chrome.windows.create({
-    tabId: curTabId,
-    top: curWin.top,
-    left: curWin.left,
-    height: curWin.height,
-    width: curWin.width,
-    focused: true,
-    type: 'popup',
-  });
+  await handleOpenInPopup(curTabId, curTab.index, curTab.windowId);
+}
 
-  tabHashes[curTabId] = {
-    windowId: curTab.windowId,
-    index: curTab.index,
-    width: curWin.width,
-    height: curWin.height,
-    top: curWin.top,
-    left: curWin.left,
-  };
-
-  await chrome.scripting.executeScript({
-    target: { tabId: curTabId },
-    args: [curTabId],
-    func: scriptFn,
-  });
-
-  chrome.runtime.onMessage.removeListener(handleMessageFromPopup);
-  chrome.runtime.onMessage.addListener(handleMessageFromPopup);
-});
-
-async function handleMessageFromPopup(_message, sender) {
-  const tabId = sender.tab.id;
+async function handleRestorePopup(tabId) {
   const tabHash = tabHashes[tabId];
   let windowId = tabHash?.windowId;
 
   if (!tabHash) return;
 
   try {
-    windowId =
-      tabHash?.windowId && (await chrome.windows.get(tabHash?.windowId)).id;
+    const window = await chrome.windows.get(tabHash?.windowId);
+    windowId = window.id;
+    await chrome.windows.update(window.id, { focused: true });
   } catch (_) {
     windowId = null;
   }
@@ -68,6 +49,44 @@ async function handleMessageFromPopup(_message, sender) {
   delete tabHashes[tabId];
   await chrome.tabs.update(tabId, { active: true });
 }
+
+async function handleOpenInPopup(tabId, tabIdx, tabWindowId) {
+  const curWin = await chrome.windows.get(tabWindowId);
+
+  await chrome.windows.create({
+    tabId,
+    top: curWin.top,
+    left: curWin.left,
+    height: curWin.height,
+    width: curWin.width,
+    focused: true,
+    type: 'popup',
+  });
+
+  tabHashes[tabId] = {
+    windowId: tabWindowId,
+    index: tabIdx,
+    width: curWin.width,
+    height: curWin.height,
+    top: curWin.top,
+    left: curWin.left,
+  };
+
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    args: [tabId],
+    func: scriptFn,
+  });
+
+  chrome.runtime.onMessage.removeListener(handleMessageFromPopup);
+  chrome.runtime.onMessage.addListener(handleMessageFromPopup);
+}
+
+async function handleMessageFromPopup(_message, sender) {
+  const tabId = sender.tab.id;
+  await handleRestorePopup(tabId);
+}
+
 async function getCurrentTab() {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   return tabs && tabs[0];
@@ -90,13 +109,6 @@ async function scriptFn(tabId) {
     height: 20px;
     border-radius: 50%;
     box-shadow: 0 0 3px 1px #fff !important;`;
-
-  button.addEventListener('click', () => {
-    button.remove();
-    styleNode.remove();
-    chrome.runtime.sendMessage({ tabId });
-  });
-
   document.body.append(button);
 
   const styleNode = document.createElement('style');
@@ -105,4 +117,10 @@ async function scriptFn(tabId) {
     visibility: visible !important;
   }`;
   document.getElementsByTagName('head')[0].appendChild(styleNode);
+
+  button.addEventListener('click', () => {
+    button.remove();
+    styleNode.remove();
+    chrome.runtime.sendMessage({ tabId });
+  });
 }

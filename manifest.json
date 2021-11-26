@@ -7,5 +7,14 @@
   "action": {},
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "togglePopup": {
+      "suggested_key": {
+        "default": "Ctrl+O",
+        "mac": "Command+O"
+      },
+      "description": "Toggles the popup"
+    }
   }
 }
