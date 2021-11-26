@@ -1,4 +1,6 @@
 const tabHashes = {};
+const CLOSE_BTN_ID = 'js-chrome-extension-close-btn';
+const STYLE_EL_ID = 'js-chrome-extension-style-el';
 
 chrome.action.onClicked.addListener(handleTogglePopup);
 
@@ -25,9 +27,18 @@ async function handleRestorePopup(tabId) {
   if (!tabHash) return;
 
   try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [CLOSE_BTN_ID, STYLE_EL_ID],
+      func: (closeBtnId, styleElId) => {
+        document.getElementById(closeBtnId)?.remove();
+        document.getElementById(styleElId)?.remove();
+      },
+    });
+
     const window = await chrome.windows.get(tabHash?.windowId);
     windowId = window.id;
-    await chrome.windows.update(window.id, { focused: true });
+    await chrome.windows.update(windowId, { focused: true });
   } catch (_) {
     windowId = null;
   }
@@ -74,7 +85,7 @@ async function handleOpenInPopup(tabId, tabIdx, tabWindowId) {
 
   await chrome.scripting.executeScript({
     target: { tabId },
-    args: [tabId],
+    args: [CLOSE_BTN_ID, STYLE_EL_ID],
     func: scriptFn,
   });
 
@@ -92,9 +103,9 @@ async function getCurrentTab() {
   return tabs && tabs[0];
 }
 
-async function scriptFn(tabId) {
+async function scriptFn(closeBtnId, styleElId) {
   const button = document.createElement('button');
-  button.classList.add('chrome-extension-close-btn');
+  button.setAttribute('id', closeBtnId);
   button.style = `
     position: fixed;
     cursor: pointer;
@@ -112,15 +123,12 @@ async function scriptFn(tabId) {
   document.body.append(button);
 
   const styleNode = document.createElement('style');
-  styleNode.innerHTML = `body:hover .chrome-extension-close-btn {
+  styleNode.setAttribute('id', styleElId);
+  styleNode.innerHTML = `body:hover #${closeBtnId} {
     opacity: 1 !important;
     visibility: visible !important;
   }`;
   document.getElementsByTagName('head')[0].appendChild(styleNode);
 
-  button.addEventListener('click', () => {
-    button.remove();
-    styleNode.remove();
-    chrome.runtime.sendMessage({ tabId });
-  });
+  button.addEventListener('click', () => chrome.runtime.sendMessage({}));
 }
