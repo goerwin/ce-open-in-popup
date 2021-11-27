@@ -9,20 +9,20 @@
     "service_worker": "background.js"
   },
   "commands": {
-    "toggleTabInPopup": {
+    "a_toggleTabInPopup": {
       "suggested_key": { "default": "Ctrl+O", "mac": "Command+O" },
       "description": "Toggles tab in popup"
     },
-    "moveTabToLeft": {
+    "b_moveTabToLeft": {
       "description": "Move tab to the left"
     },
-    "moveTabToRight": {
+    "c_moveTabToRight": {
       "description": "Move tab to the right"
     },
-    "moveTabPrevWindow": {
+    "d_moveTabPrevWindow": {
       "description": "Move tab to previous window"
     },
-    "moveTabNextWindow": {
+    "e_moveTabNextWindow": {
       "description": "Move tab to next window"
     }
   }

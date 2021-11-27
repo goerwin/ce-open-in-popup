@@ -23,11 +23,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Shortcuts
 
 chrome.commands.onCommand.addListener(async (cmd, tab) => {
-  if (cmd === 'toggleTabInPopup') return handleToggleTabInPopup(tab.id);
-  if (cmd === 'moveTabToLeft') return moveTabToLeftRight('left', tab);
-  if (cmd === 'moveTabToRight') return moveTabToLeftRight('right', tab);
-  if (cmd === 'moveTabPrevWindow') return moveTabToPrevNextWindow('prev', tab);
-  if (cmd === 'moveTabNextWindow') return moveTabToPrevNextWindow('next', tab);
+  if (cmd === 'a_toggleTabInPopup') return handleToggleTabInPopup(tab.id);
+  if (cmd === 'b_moveTabToLeft') return moveTabToLeftRight('left', tab);
+  if (cmd === 'c_moveTabToRight') return moveTabToLeftRight('right', tab);
+  if (cmd === 'd_moveTabPrevWindow') return moveTabToPrevNextWindow('prev', tab);
+  if (cmd === 'e_moveTabNextWindow') return moveTabToPrevNextWindow('next', tab);
 });
 
 // Functions
