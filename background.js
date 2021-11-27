@@ -1,21 +1,113 @@
 const tabHashes = {};
+const moveTabHashes = {};
+
 const CLOSE_BTN_ID = 'js-chrome-extension-close-btn';
 const STYLE_EL_ID = 'js-chrome-extension-style-el';
 
-chrome.action.onClicked.addListener(handleTogglePopup);
+// Icon click
 
-chrome.commands.onCommand.addListener(async function (command) {
-  if (command === 'togglePopup') await handleTogglePopup();
+chrome.action.onClicked.addListener(() => handleToggleTabInPopup());
+
+// Context Menu
+
+chrome.contextMenus.create({
+  id: 'toggle-tab-in-popup',
+  title: 'Toggle tab in Popup',
 });
 
-async function handleTogglePopup() {
-  const curTab = await getCurrentTab();
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'toggle-tab-in-popup')
+    return handleToggleTabInPopup(tab.id);
+});
+
+// Shortcuts
+
+chrome.commands.onCommand.addListener(async (cmd, tab) => {
+  if (cmd === 'toggleTabInPopup') return handleToggleTabInPopup(tab.id);
+  if (cmd === 'moveTabToLeft') return moveTabToLeftRight('left', tab);
+  if (cmd === 'moveTabToRight') return moveTabToLeftRight('right', tab);
+  if (cmd === 'moveTabPrevWindow') return moveTabToPrevNextWindow('prev', tab);
+  if (cmd === 'moveTabNextWindow') return moveTabToPrevNextWindow('next', tab);
+});
+
+// Functions
+
+/**
+ *
+ * @param {'left' | 'right'} direction
+ * @param {chrome.tabs.tab} tab
+ */
+async function moveTabToLeftRight(direction, tab) {
+  const tabId = tab.id;
+  const tabWindow = await chrome.windows.get(tab.windowId, { populate: true });
+  const tabIdxInWindow = tabWindow.tabs.findIndex((el) => el.id === tabId);
+
+  const newLeftTabIdx = tabIdxInWindow === 0 ? -1 : tabIdxInWindow - 1;
+  const newRightTabIdx =
+    tabIdxInWindow < tabWindow.tabs.length - 1 ? tabIdxInWindow + 1 : 0;
+
+  await chrome.tabs.move(tabId, {
+    index: direction === 'left' ? newLeftTabIdx : newRightTabIdx,
+  });
+}
+
+/**
+ *
+ * @param {'prev' | 'next'} direction
+ * @param {chrome.tabs.Tab} tab
+ */
+async function moveTabToPrevNextWindow(direction, tab) {
+  const windows = (
+    await chrome.windows.getAll({ windowTypes: ['normal'], populate: true })
+  ).filter((w) => w.state === 'normal');
+
+  const tabId = tab.id;
+  const tabWindow = await chrome.windows.get(tab.windowId, { populate: true });
+  const tabWindowId = tabWindow.id;
+
+  // save tab idx in current window
+  moveTabHashes[tabId] = {
+    ...moveTabHashes[tabId],
+    [tabWindowId]: { tabIdx: tab.index },
+  };
+
+  const tabWindowIdx = windows.findIndex((w) => w.id === tabWindowId);
+  const isLonelyTab = tabWindow.tabs.length === 1;
+
+  const moveTab =
+    direction === 'prev'
+      ? isLonelyTab || tabWindowIdx > 0
+      : isLonelyTab || tabWindowIdx < windows.length - 1;
+
+  const prevWindowIdx =
+    tabWindowIdx > 0 ? tabWindowIdx - 1 : windows.length - 1;
+  const nextWindowIdx =
+    tabWindowIdx < windows.length - 1 ? tabWindowIdx + 1 : 0;
+
+  const newWindowIdx = direction === 'prev' ? prevWindowIdx : nextWindowIdx;
+
+  if (moveTab) {
+    const windowId = windows[newWindowIdx].id;
+    const savedTabIdx = moveTabHashes[tabId]?.[windowId]?.tabIdx ?? -1;
+    await chrome.tabs.move(tabId, { windowId, index: savedTabIdx });
+    await chrome.windows.update(windowId, { focused: true });
+    await chrome.tabs.update(tabId, { active: true });
+  } else {
+    await chrome.windows.create({ tabId, type: 'normal', focused: true });
+  }
+}
+
+/**
+ *
+ * @param {number} [tabId]
+ * @returns
+ */
+async function handleToggleTabInPopup(tabId) {
+  const curTab = tabId ? await chrome.tabs.get(tabId) : await getCurrentTab();
   const curTabId = curTab.id;
   const tabHash = tabHashes[curTabId];
 
-  if (new RegExp('chrome://').test(curTab.url)) return;
-
-  if (tabHash) return handleRestorePopup(curTabId);
+  if (tabHash) return handleRestoreTab(curTabId);
 
   const curWin = await chrome.windows.get(curTab.windowId);
 
@@ -27,26 +119,17 @@ async function handleTogglePopup() {
       left: curWin.left,
     };
 
-    return handleRestorePopup(curTabId);
+    return handleRestoreTab(curTabId);
   }
 
-  await handleOpenInPopup(curTabId, curTab.index, curWin);
+  await handleOpenTabInPopup(curTabId, curTab.index, curWin);
 }
 
-async function handleRestorePopup(tabId) {
+async function handleRestoreTab(tabId) {
   const tabHash = tabHashes[tabId];
   let windowId = tabHash?.windowId;
 
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      args: [CLOSE_BTN_ID, STYLE_EL_ID],
-      func: (closeBtnId, styleElId) => {
-        document.getElementById(closeBtnId)?.remove();
-        document.getElementById(styleElId)?.remove();
-      },
-    });
-
     const window = await chrome.windows.get(tabHash?.windowId);
     windowId = window.id;
     await chrome.windows.update(windowId, { focused: true });
@@ -72,7 +155,7 @@ async function handleRestorePopup(tabId) {
   await chrome.tabs.update(tabId, { active: true });
 }
 
-async function handleOpenInPopup(tabId, tabIdx, curWin) {
+async function handleOpenTabInPopup(tabId, tabIdx, curWin) {
   await chrome.windows.create({
     tabId,
     top: curWin.top,
@@ -91,20 +174,6 @@ async function handleOpenInPopup(tabId, tabIdx, curWin) {
     top: curWin.top,
     left: curWin.left,
   };
-
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    args: [CLOSE_BTN_ID, STYLE_EL_ID],
-    func: scriptFn,
-  });
-
-  chrome.runtime.onMessage.removeListener(handleMessageFromPopup);
-  chrome.runtime.onMessage.addListener(handleMessageFromPopup);
-}
-
-async function handleMessageFromPopup(_message, sender) {
-  const tabId = sender.tab.id;
-  await handleRestorePopup(tabId);
 }
 
 async function getCurrentTab() {
@@ -112,32 +181,19 @@ async function getCurrentTab() {
   return tabs && tabs[0];
 }
 
-async function scriptFn(closeBtnId, styleElId) {
-  const button = document.createElement('button');
-  button.setAttribute('id', closeBtnId);
-  button.style = `
-    position: fixed;
-    cursor: pointer;
-    top: 10px;
-    left: 10px;
-    border: 0;
-    background: #9d0000;
-    z-index: 99999999;
-    opacity: 0;
-    visibility: hidden;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    box-shadow: 0 0 3px 1px #fff !important;`;
-  document.body.append(button);
-
-  const styleNode = document.createElement('style');
-  styleNode.setAttribute('id', styleElId);
-  styleNode.innerHTML = `body:hover #${closeBtnId} {
-    opacity: 1 !important;
-    visibility: visible !important;
-  }`;
-  document.getElementsByTagName('head')[0].appendChild(styleNode);
-
-  button.addEventListener('click', () => chrome.runtime.sendMessage({}));
-}
+// Open new window in same position as parent
+// NOTE: It is not possible to know the tab
+// from where the "create new window" action was triggered.
+// So you can't know the exact position of it.
+// MacOS seems to open "new windows" with a small offset to
+// the right/down if possible
+// chrome.windows.onCreated.addListener(async (window) => {
+//   const lastFocusedWin = await chrome.windows.getLastFocused();
+//   console.log('nnn', lastFocusedWin.id, window.id);
+//   if (window.state == 'normal') {
+//     await chrome.windows.update(window.id, {
+//       top: window.top - 10,
+//       left: window.left - 10,
+//     });
+//   }
+// });

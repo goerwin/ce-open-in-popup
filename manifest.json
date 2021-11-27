@@ -1,20 +1,29 @@
 {
-  "name": "Open in popup",
-  "description": "Opens current tab in a popup with the ability to go back by pressing the red dot button in the top left corner",
+  "name": "Tab Actions",
+  "description": "Toggles tab in a popup, move tab to the left/right, move tab to prev/next window",
   "version": "1.0",
   "manifest_version": 3,
-  "permissions": ["scripting", "activeTab"],
+  "permissions": ["activeTab", "contextMenus"],
   "action": {},
   "background": {
     "service_worker": "background.js"
   },
   "commands": {
-    "togglePopup": {
-      "suggested_key": {
-        "default": "Ctrl+O",
-        "mac": "Command+O"
-      },
-      "description": "Toggles the popup"
+    "toggleTabInPopup": {
+      "suggested_key": { "default": "Ctrl+O", "mac": "Command+O" },
+      "description": "Toggles tab in popup"
+    },
+    "moveTabToLeft": {
+      "description": "Move tab to the left"
+    },
+    "moveTabToRight": {
+      "description": "Move tab to the right"
+    },
+    "moveTabPrevWindow": {
+      "description": "Move tab to previous window"
+    },
+    "moveTabNextWindow": {
+      "description": "Move tab to next window"
     }
   }
 }
