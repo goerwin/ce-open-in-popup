@@ -1,9 +1,6 @@
 const tabHashes = {};
 const moveTabHashes = {};
 
-const CLOSE_BTN_ID = 'js-chrome-extension-close-btn';
-const STYLE_EL_ID = 'js-chrome-extension-style-el';
-
 // Icon click
 
 chrome.action.onClicked.addListener(() => handleToggleTabInPopup());
@@ -23,11 +20,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Shortcuts
 
 chrome.commands.onCommand.addListener(async (cmd, tab) => {
-  // TODO: This will be an option
-  const jumpWindows = true;
+  // TODO: This will be an option in a popup
+  const options = { jumpWindows: true, focusFirstLastTabIfEdgeWindow: true };
 
-  if (cmd === 'aa_focusPrevTab') return focusPrevNextTab('prev', jumpWindows);
-  if (cmd === 'ab_focusNextTab') return focusPrevNextTab('next', jumpWindows);
+  if (cmd === 'aa_focusPrevTab') return focusPrevNextTab('prev', tab, options);
+  if (cmd === 'ab_focusNextTab') return focusPrevNextTab('next', tab, options);
   if (cmd === 'a_toggleTabInPopup') return handleToggleTabInPopup(tab.id);
   if (cmd === 'b_moveTabToLeft') return moveTabToLeftRight('left', tab);
   if (cmd === 'c_moveTabToRight') return moveTabToLeftRight('right', tab);
@@ -37,47 +34,40 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
     return moveTabToPrevNextWindow('next', tab);
 });
 
-async function focusPrevNextTabInWindow(window, direction) {
-  const activeTabIdx = window.tabs.findIndex((tab) => tab.active);
+// Functions
 
-  const newTabIdx =
-    direction === 'next'
-      ? activeTabIdx >= window.tabs.length - 1
-        ? 0
-        : activeTabIdx + 1
-      : activeTabIdx <= 0
-      ? window.tabs.length - 1
-      : activeTabIdx - 1;
+async function focusPrevNextTab(direction, tab, options = {}) {
+  const { jumpWindows, focusFirstLastTabIfEdgeWindow } = options;
 
-  const newTabToFocus = window.tabs[newTabIdx];
-  console.log(activeTabIdx, newTabToFocus);
-  return chrome.tabs.update(newTabToFocus.id, { active: true });
-}
-
-async function focusPrevNextTab(direction, jumpWindows) {
-  const curTab = await getCurrentTab();
-
-  if (!curTab) return;
-
-  const tabIdx = curTab.index;
-  const curWindow = await chrome.windows.get(curTab.windowId, {
+  const tabIdx = tab.index;
+  const curWindow = await chrome.windows.get(tab.windowId, {
     // when selecting dev tools I think the window.id returned is the
     // one of its window's parent tab. So not implementing it on devtools
     populate: true,
   });
 
-  const windows = (
-    await chrome.windows.getAll({
-      populate: true,
-    })
-  ).filter((w) => w.state === 'normal');
+  const windows = (await chrome.windows.getAll({ populate: true })).filter(
+    (w) => w.state === 'normal'
+  );
 
   const isAnEdgeTab =
     direction === 'next' ? tabIdx === curWindow.tabs.length - 1 : tabIdx === 0;
 
   // focus prev/next tab within current window
   if (!isAnEdgeTab || !jumpWindows || windows.length <= 1) {
-    return focusPrevNextTabInWindow(curWindow, direction);
+    const activeTabIdx = curWindow.tabs.findIndex((tab) => tab.active);
+
+    const newTabIdx =
+      direction === 'next'
+        ? activeTabIdx >= curWindow.tabs.length - 1
+          ? 0
+          : activeTabIdx + 1
+        : activeTabIdx <= 0
+        ? curWindow.tabs.length - 1
+        : activeTabIdx - 1;
+
+    const newTabToFocus = curWindow.tabs[newTabIdx];
+    return chrome.tabs.update(newTabToFocus.id, { active: true });
   }
 
   // focus prev/next window
@@ -91,14 +81,22 @@ async function focusPrevNextTab(direction, jumpWindows) {
       ? windows.length - 1
       : curWinIdx - 1;
 
-  await chrome.windows.update(windows[newWinIdx].id, { focused: true });
-  return focusPrevNextTabInWindow(windows[newWinIdx], direction);
+  const newWindow = windows[newWinIdx];
+  await chrome.windows.update(newWindow.id, { focused: true });
+
+  if (!focusFirstLastTabIfEdgeWindow) return;
+
+  // focus first or last tab in window when first/last window is reached
+  const isAnEdgeWindow = newWinIdx === 0 || newWinIdx === windows.length - 1;
+  if (!isAnEdgeWindow) return;
+
+  const tabToFocus =
+    newWindow.tabs[direction === 'next' ? 0 : newWindow.tabs.length - 1];
+  await chrome.tabs.update(tabToFocus.id, { active: true });
 }
 
 // TODO: add a shortcut for toggling focus of the searchbar/page content
 // shorcut for mute/unmute tab
-
-// Functions
 
 /**
  *
