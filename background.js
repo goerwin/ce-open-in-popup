@@ -37,8 +37,28 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
     return moveTabToPrevNextWindow('next', tab);
 });
 
+async function focusPrevNextTabInWindow(window, direction) {
+  const activeTabIdx = window.tabs.findIndex((tab) => tab.active);
+
+  const newTabIdx =
+    direction === 'next'
+      ? activeTabIdx >= window.tabs.length - 1
+        ? 0
+        : activeTabIdx + 1
+      : activeTabIdx <= 0
+      ? window.tabs.length - 1
+      : activeTabIdx - 1;
+
+  const newTabToFocus = window.tabs[newTabIdx];
+  console.log(activeTabIdx, newTabToFocus);
+  return chrome.tabs.update(newTabToFocus.id, { active: true });
+}
+
 async function focusPrevNextTab(direction, jumpWindows) {
   const curTab = await getCurrentTab();
+
+  if (!curTab) return;
+
   const tabIdx = curTab.index;
   const curWindow = await chrome.windows.get(curTab.windowId, {
     // when selecting dev tools I think the window.id returned is the
@@ -57,17 +77,7 @@ async function focusPrevNextTab(direction, jumpWindows) {
 
   // focus prev/next tab within current window
   if (!isAnEdgeTab || !jumpWindows || windows.length <= 1) {
-    const newTabIdx =
-      direction === 'next'
-        ? tabIdx === curWindow.tabs.length - 1
-          ? 0
-          : tabIdx + 1
-        : tabIdx === 0
-        ? curWindow.tabs.length - 1
-        : tabIdx - 1;
-
-    const newTabToFocus = curWindow.tabs[newTabIdx];
-    return chrome.tabs.update(newTabToFocus.id, { active: true });
+    return focusPrevNextTabInWindow(curWindow, direction);
   }
 
   // focus prev/next window
@@ -81,10 +91,8 @@ async function focusPrevNextTab(direction, jumpWindows) {
       ? windows.length - 1
       : curWinIdx - 1;
 
-  return chrome.windows.update(windows[newWinIdx].id, {
-    focused: true,
-    drawAttention: true,
-  });
+  await chrome.windows.update(windows[newWinIdx].id, { focused: true });
+  return focusPrevNextTabInWindow(windows[newWinIdx], direction);
 }
 
 // TODO: add a shortcut for toggling focus of the searchbar/page content
