@@ -13,6 +13,12 @@
       "suggested_key": { "default": "Ctrl+O", "mac": "Command+O" },
       "description": "Toggles tab in popup"
     },
+    "aa_focusPrevTab": {
+      "description": "Focus previous tab"
+    },
+    "ab_focusNextTab": {
+      "description": "Focus next tab"
+    },
     "b_moveTabToLeft": {
       "description": "Move tab to the left"
     },

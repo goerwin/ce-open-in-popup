@@ -23,12 +23,72 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Shortcuts
 
 chrome.commands.onCommand.addListener(async (cmd, tab) => {
+  // TODO: This will be an option
+  const jumpWindows = true;
+
+  if (cmd === 'aa_focusPrevTab') return focusPrevNextTab('prev', jumpWindows);
+  if (cmd === 'ab_focusNextTab') return focusPrevNextTab('next', jumpWindows);
   if (cmd === 'a_toggleTabInPopup') return handleToggleTabInPopup(tab.id);
   if (cmd === 'b_moveTabToLeft') return moveTabToLeftRight('left', tab);
   if (cmd === 'c_moveTabToRight') return moveTabToLeftRight('right', tab);
-  if (cmd === 'd_moveTabPrevWindow') return moveTabToPrevNextWindow('prev', tab);
-  if (cmd === 'e_moveTabNextWindow') return moveTabToPrevNextWindow('next', tab);
+  if (cmd === 'd_moveTabPrevWindow')
+    return moveTabToPrevNextWindow('prev', tab);
+  if (cmd === 'e_moveTabNextWindow')
+    return moveTabToPrevNextWindow('next', tab);
 });
+
+async function focusPrevNextTab(direction, jumpWindows) {
+  const curTab = await getCurrentTab();
+  const tabIdx = curTab.index;
+  const curWindow = await chrome.windows.get(curTab.windowId, {
+    // when selecting dev tools I think the window.id returned is the
+    // one of its window's parent tab. So not implementing it on devtools
+    populate: true,
+  });
+
+  const windows = (
+    await chrome.windows.getAll({
+      populate: true,
+    })
+  ).filter((w) => w.state === 'normal');
+
+  const isAnEdgeTab =
+    direction === 'next' ? tabIdx === curWindow.tabs.length - 1 : tabIdx === 0;
+
+  // focus prev/next tab within current window
+  if (!isAnEdgeTab || !jumpWindows || windows.length <= 1) {
+    const newTabIdx =
+      direction === 'next'
+        ? tabIdx === curWindow.tabs.length - 1
+          ? 0
+          : tabIdx + 1
+        : tabIdx === 0
+        ? curWindow.tabs.length - 1
+        : tabIdx - 1;
+
+    const newTabToFocus = curWindow.tabs[newTabIdx];
+    return chrome.tabs.update(newTabToFocus.id, { active: true });
+  }
+
+  // focus prev/next window
+  const curWinIdx = windows.findIndex((w) => w.id === curWindow.id);
+  const newWinIdx =
+    direction === 'next'
+      ? curWinIdx === windows.length - 1
+        ? 0
+        : curWinIdx + 1
+      : curWinIdx === 0
+      ? windows.length - 1
+      : curWinIdx - 1;
+
+  return chrome.windows.update(windows[newWinIdx].id, {
+    focused: true,
+    drawAttention: true,
+  });
+}
+
+// TODO: add a shortcut for toggling focus of the searchbar/page content
+// shorcut for mute/unmute tab
 
 // Functions
 
