@@ -3,8 +3,9 @@
   "description": "Toggles tab in a popup, move tab to the left/right, move tab to prev/next window",
   "version": "1.0",
   "manifest_version": 3,
-  "permissions": ["activeTab", "contextMenus"],
+  "permissions": ["activeTab", "contextMenus", "storage"],
   "action": {},
+  "options_page": "options.html",
   "background": {
     "service_worker": "background.js"
   },

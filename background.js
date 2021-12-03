@@ -1,6 +1,16 @@
 const tabHashes = {};
 const moveTabHashes = {};
 
+chrome.runtime.onInstalled.addListener(async (_details) => {
+  // set default options
+  await chrome.storage.sync.set(
+    await chrome.storage.sync.get({
+      jumpWindows: true,
+      focusFirstLastTabIfEdgeWindow: true,
+    })
+  );
+});
+
 // Icon click
 
 chrome.action.onClicked.addListener(() => handleToggleTabInPopup());
@@ -20,8 +30,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Shortcuts
 
 chrome.commands.onCommand.addListener(async (cmd, tab) => {
-  // TODO: This will be an option in a popup
-  const options = { jumpWindows: true, focusFirstLastTabIfEdgeWindow: true };
+  const options = await chrome.storage.sync.get([
+    'jumpWindows',
+    'focusFirstLastTabIfEdgeWindow',
+  ]);
 
   if (cmd === 'aa_focusPrevTab') return focusPrevNextTab('prev', tab, options);
   if (cmd === 'ab_focusNextTab') return focusPrevNextTab('next', tab, options);

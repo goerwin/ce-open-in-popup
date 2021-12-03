@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="button.css" />
+    <style>
+      html,
+      body {
+        background-color: #333;
+        color: #ddd;
+        user-select: none;
+        font-size: 20px;
+      }
+
+      .option {
+        margin-bottom: 10px;
+      }
+
+      .option * {
+        vertical-align: middle;
+      }
+
+      .sub-option {
+        margin-top: 10px;
+        margin-left: 20px;
+      }
+
+      input[type='checkbox'] {
+        width: 20px;
+        height: 20px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="option">
+      <label>
+        <input type="checkbox" name="jumpWindows" id="" />
+        <span>Jump through other windows when focusing tabs</span>
+      </label>
+      <div class="sub-option">
+        <label>
+          <input type="checkbox" name="focusFirstLastTabIfEdgeWindow" id="" />
+          <span>Focus first/last tab in prev/next window </span>
+        </label>
+      </div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
