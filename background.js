@@ -59,7 +59,7 @@ async function focusPrevNextTab(direction, tab, options = {}) {
   });
 
   const windows = (await chrome.windows.getAll({ populate: true })).filter(
-    (w) => w.state === 'normal'
+    (w) => ['normal', 'maximized'].includes(w.state)
   );
 
   const isAnEdgeTab =
@@ -137,7 +137,7 @@ async function moveTabToLeftRight(direction, tab) {
 async function moveTabToPrevNextWindow(direction, tab) {
   const windows = (
     await chrome.windows.getAll({ windowTypes: ['normal'], populate: true })
-  ).filter((w) => w.state === 'normal');
+  ).filter((w) => ['normal', 'maximized'].includes(w.state));
 
   const tabId = tab.id;
   const tabWindow = await chrome.windows.get(tab.windowId, { populate: true });
