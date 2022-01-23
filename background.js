@@ -137,7 +137,10 @@ async function moveTabToLeftRight(direction, tab) {
 async function moveTabToPrevNextWindow(direction, tab) {
   const windows = (
     await chrome.windows.getAll({ windowTypes: ['normal'], populate: true })
-  ).filter((w) => ['normal', 'maximized'].includes(w.state));
+  ).filter(
+    (w) =>
+      ['normal', 'maximized'].includes(w.state) && w.incognito === tab.incognito
+  );
 
   const tabId = tab.id;
   const tabWindow = await chrome.windows.get(tab.windowId, { populate: true });
@@ -171,7 +174,12 @@ async function moveTabToPrevNextWindow(direction, tab) {
     await chrome.windows.update(windowId, { focused: true });
     await chrome.tabs.update(tabId, { active: true });
   } else {
-    await chrome.windows.create({ tabId, type: 'normal', focused: true });
+    await chrome.windows.create({
+      tabId,
+      type: 'normal',
+      focused: true,
+      incognito: tabWindow.incognito,
+    });
   }
 }
 
@@ -240,6 +248,7 @@ async function handleOpenTabInPopup(tabId, tabIdx, curWin) {
     left: curWin.left,
     height: curWin.height,
     width: curWin.width,
+    incognito: curWin.incognito,
     focused: true,
     type: 'popup',
   });
