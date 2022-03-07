@@ -59,7 +59,8 @@ async function focusPrevNextTab(direction, tab, options = {}) {
   });
 
   const windows = (await chrome.windows.getAll({ populate: true })).filter(
-    (w) => ['normal', 'maximized'].includes(w.state)
+    (w) =>
+      ['normal', 'maximized'].includes(w.state) && w.incognito === tab.incognito
   );
 
   const isAnEdgeTab =
@@ -106,9 +107,6 @@ async function focusPrevNextTab(direction, tab, options = {}) {
     newWindow.tabs[direction === 'next' ? 0 : newWindow.tabs.length - 1];
   await chrome.tabs.update(tabToFocus.id, { active: true });
 }
-
-// TODO: add a shortcut for toggling focus of the searchbar/page content
-// shorcut for mute/unmute tab
 
 /**
  *
