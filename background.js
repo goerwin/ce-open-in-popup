@@ -230,6 +230,7 @@ async function handleRestoreTab(tabId) {
       left: tabHash.left,
       height: tabHash.height,
       width: tabHash.width,
+      incognito: tabHash.incognito,
       type: 'normal',
       focused: true,
     });
@@ -256,6 +257,7 @@ async function handleOpenTabInPopup(tabId, tabIdx, curWin) {
     index: tabIdx,
     width: curWin.width,
     height: curWin.height,
+    incognito: curWin.incognito,
     top: curWin.top,
     left: curWin.left,
   };
